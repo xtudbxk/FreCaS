@@ -26,8 +26,8 @@ def freq_decompose(latent, tsize=(128,128), mode="bilinear"):
     outs.append(cl_low)
     return outs
 
-# ---- freqgs wrapper ----
-def facfg_wrapper(pipeline, name="freqgs_wrapper", gs=1.0, sizes=((128,128),(256,256)), gsw=None, mode="bilinear"):
+# ---- facfg wrapper ----
+def facfg_wrapper(pipeline, name="facfg_wrapper", gs=1.0, sizes=((128,128),(256,256)), gsw=None, mode="bilinear"):
     if isinstance(pipeline, StableDiffusion3Pipeline):
         network = pipeline.transformer
         is_sd3 = True

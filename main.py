@@ -91,9 +91,9 @@ from utils.scheduling_flow_match_euler_discrete_modified import FlowMatchEulerDi
 def parse_args():
     parser = argparse.ArgumentParser(description="Simple example of a training script.")
     parser.add_argument("--output_dir", type=str, default="results", help="The output directory where the model predictions will be written.")
-    parser.add_argument("--seed", type=int, default=23, help="A seed for reproducible training.")
+    parser.add_argument("--seed", type=int, default=1, help="A seed for reproducible training.")
     parser.add_argument("--prompts", type=str, default="prompts.lst", help="the prompt str or prompts file.")
-    parser.add_argument("--images-per-prompt", type=int, default=3, help="The generated images for each prompt.")
+    parser.add_argument("--images-per-prompt", type=int, default=1, help="The generated images for each prompt.")
     parser.add_argument("--mixed_precision", type=str, default="fp16", choices=["no", "fp16", "bf16"])
 
     # --- args of FreqCaS ---
@@ -139,8 +139,7 @@ def main(args):
     # --- the paths of different pipelines ---
     pipeline_paths = {
         "sdxl": "/home/notebook/data/group/LowLevelLLM/models/diffusion_models/stable-diffusion-xl-base-1.0",
-        "sd21": "/home/notebook/code/personal/S9049747/projects/BasicSR_experiments/models/stable-diffusion-2-1-base/snapshots/main",
-        "sd3": "/home/notebook/code/personal/S9049747/LowLevelLLM/models/diffusion_models/stable-diffusion-3-medium-diffusers",
+        "sd3": "/home/notebook/data/group/LowLevelLLM/models/diffusion_models/stable-diffusion-3-medium-diffusers",
     }
 
     # --- load the pipeline ---
@@ -214,7 +213,7 @@ def main(args):
         with torch.no_grad():
 
             # --- some preprocess ---- 
-            negative_prompt = ["blurry, ugly, duplicate, poorly drawn, deformed, mosaic, bad hands, missing fingers, extra fingers, bad feet"]
+            negative_prompt = ["blurry, ugly, duplicated objects, poorly drawn, deformed, mosaic, bad hands, missing fingers, extra fingers, bad feet, unreasonable layout"]
 
             # --- inference loop ---
             num_inference_steps = sum([_s["steps"] for _s in schedulers])
