@@ -13,6 +13,7 @@
 **ABSTRACT** While image generation with diffusion models has achieved a great success, generating images of higher resolution than the training size remains a challenging task due to the high computational cost. Current methods typically perform the entire sampling process at full resolution and process all frequency components simultaneously, contradicting with the inherent coarse-to-fine nature of latent diffusion models and wasting computations on processing premature high-frequency details at early diffusion stages. To address this issue, we introduce an efficient **Fre**quency-aware **Ca**scaded **S**ampling framework, **FreCaS** in short, for higher-resolution image generation. FreCaS decomposes the sampling process into cascaded stages with gradually increased resolutions, progressively expanding frequency bands and refining the corresponding details. We propose an innovative frequency-aware classifier-free guidance (FA-CFG) strategy to assign different guidance strengths for different frequency components, directing the diffusion model to add new details in the expanded frequency domain of each stage. Additionally, we fuse the cross-attention maps of previous and current stages to avoid synthesizing unfaithful layouts. Experiments demonstrate that FreCaS significantly outperforms state-of-the-art methods in image quality and generation speed. In particular, FreCaS is about 2.86&times; and 6.07&times; faster than ScaleCrafter and DemoFusion in generating a 2048&times;2048 image using a pre-trained SDXL model and achieves an FID<sub>b</sub> improvement of 11.6 and 3.7, respectively. FreCaS can be easily extended to more complex models such as SD3.
 
 ## FreCaS && FA-CFG
+
 ![](figures/framework.png)
 
 (a) The overall framework of FreCaS. The entire **T**-step sampling process is divided into **N+1** stages of increasing resolutions and expanding frequency bands. FreCaS starts the sampling process at the training size and obtains the last latent z<sup>s<sub>0</sub></sup><sub>L</sub> at that stage. Then, FreCaS continues the sampling from the first latent z<sup>s<sub>1</sub></sup><sub>F</sub> at the next stage with a larger resolution and expanded frequency domain. This procedure is repeated until the final latent z<sup>s<sub>N</sub></sup><sub>0</sub> at stage **N** is obtained. A decoder is then used to generate the final image.
@@ -68,7 +69,8 @@ python3 main.py
     One example of generating figures of 2048x2048 using SDXL models.
     `python3 main.py --gs 7.5 --prompts prompts.lst --tsize [[1024,1024],[2048,2048]] --msp_endtimes 200 0 --msp_steps 40 10 --msp_gamma 1.5 --name sdxl --images-per-prompt 1 --facfg_weight 25.0 7.5 --camap_weight 0.8 --output results`
     
-    You can adjust the steps/endtimestep of each stages, the guidance strength of each frequency components w<sub>h</sub> and w<sub>l</sub>, or CA-maps reutilization weight w<sub>c</sub> to seek a better tradeoff between quality and efficiency.
+
+*You can adjust the steps/endtimestep of each stages, the guidance strength of each frequency components w<sub>h</sub> and w<sub>l</sub>, or CA-maps reutilization weight w<sub>c</sub> to seek a better tradeoff between quality and efficiency.*
 
 
 ## CITATION
