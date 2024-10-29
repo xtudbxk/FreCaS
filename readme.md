@@ -67,6 +67,8 @@ python3 main.py
 
     One example of generating figures of 2048x2048 using SDXL models.
     `python3 main.py --gs 7.5 --prompts prompts.lst --tsize [[1024,1024],[2048,2048]] --msp_endtimes 200 0 --msp_steps 40 10 --msp_gamma 1.5 --name sdxl --images-per-prompt 1 --facfg_weight 25.0 7.5 --camap_weight 0.8 --output results`
+    
+    You can adjust the steps/endtimestep of each stages, the guidance strength of each frequency components w<sub>h</sub> and w<sub>l</sub>, or CA-maps reutilization weight w<sub>c</sub> to seek a better tradeoff between quality and efficiency.
 
 
 ## CITATION
