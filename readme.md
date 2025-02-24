@@ -1,9 +1,10 @@
 ### :star: Update
 - **2025.02.24**: Accepted by [ICLR2025](https://iclr.cc/Conferences/2025). We update the code for SD21 and SD3 pretrained models.
 
+---
+
 ### [FreCaS: Efficient Higher-Resolution Image Generation via Frequency-aware  Cascaded Sampling (ICLR2025)](https://arxiv.org/abs/2410.18410)
 
----
 
 <a href='https://arxiv.org/abs/2410.18410'><img src='https://img.shields.io/badge/arXiv-2410.18410-b31b1b.svg'></a>
 
