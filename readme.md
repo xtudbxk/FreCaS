@@ -1,4 +1,7 @@
-### [FreCaS: Efficient Higher-Resolution Image Generation via Frequency-aware  Cascaded Sampling](https://arxiv.org/abs/2410.18410)
+### :star: Update
+- **2025.02.24**: Accepted by [ICLR2025](https://iclr.cc/Conferences/2025). We update the code for SD21 and SD3 pretrained models.
+
+### [FreCaS: Efficient Higher-Resolution Image Generation via Frequency-aware  Cascaded Sampling (ICLR2025)](https://arxiv.org/abs/2410.18410)
 
 ---
 
@@ -42,7 +45,6 @@
         "sd3": "/home/notebook/data/group/LowLevelLLM/models/diffusion_models/stable-diffusion-3-medium-diffusers",
     }
 ```
-*SD21 and SD3 will be supported in a few weeks.*
   
 - ##### Inference
 Please use the following command to generate higher-resolution images:
@@ -76,14 +78,10 @@ python3 main.py
 ## CITATION
 
 ```
-@misc{zhang2024frecasefficienthigherresolutionimage,
-      title={FreCaS: Efficient Higher-Resolution Image Generation via Frequency-aware Cascaded Sampling}, 
-      author={Zhengqiang Zhang and Ruihuang Li and Lei Zhang},
-      year={2024},
-      eprint={2410.18410},
-      archivePrefix={arXiv},
-      primaryClass={cs.CV},
-      url={https://arxiv.org/abs/2410.18410}, 
+@inproceedings{zhang2024frecas,
+  title={FreCaS: Efficient Higher-Resolution Image Generation via Frequency-aware Cascaded Sampling},
+  author={Zhang, Zhengqiang and Li, Ruihuang and Zhang, Lei},
+  booktitle={The Thirteenth International Conference on Learning Representations}
 }
 ```
 
