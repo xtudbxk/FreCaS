@@ -9,13 +9,18 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-import diffusers
+from diffusers import StableDiffusionPipeline, StableDiffusion3Pipeline, StableDiffusionXLPipeline
 
 from utils.wrapper_utils import wrap, unwrap, obtain_origin
 
 # --- obtain/set atten map wrapper ---
 def camap_wrapper(pipeline, camap_w=1.0, mode="bilinear", name="camap_wrapper"):
-    network = pipeline.unet
+    if isinstance(pipeline, StableDiffusion3Pipeline):
+        network = pipeline.transformer
+        is_sd3 = True
+    elif isinstance(pipeline, (StableDiffusionPipeline, StableDiffusionXLPipeline)):
+        network = pipeline.unet
+        is_sd3 = False
 
     # ===== some wrapper funcs =====
     def network_forward(self, hidden_states, timestep, encoder_hidden_states, **kwargs):
@@ -74,8 +79,13 @@ def camap_wrapper(pipeline, camap_w=1.0, mode="bilinear", name="camap_wrapper"):
 
             out = origin_func(query, key, value, attn_mask, dropout_p, is_causal)
             if network._collect_mode:
-                eyematrix = torch.eye(key.shape[-2], dtype=key.dtype, device=key.device)
-                camap = torch.mean(origin_func(query, key, eyematrix), dim=1, keepdims=True)
+                if is_sd3:
+                    q_v, k_t = query[:,:,:-154,:], key[:,:,-154:,:]
+                    eyematrix = torch.eye(k_t.shape[-2], dtype=k_t.dtype, device=k_t.device)
+                    camap = torch.mean(origin_func(q_v, k_t, eyematrix), dim=1, keepdims=True)
+                else:
+                    eyematrix = torch.eye(key.shape[-2], dtype=key.dtype, device=key.device)
+                    camap = torch.mean(origin_func(query, key, eyematrix), dim=1, keepdims=True)
 
                 _, _, s1, s2 = camap.shape
                 if (s1,s2) not in network._camap:
@@ -86,9 +96,14 @@ def camap_wrapper(pipeline, camap_w=1.0, mode="bilinear", name="camap_wrapper"):
             if network._utilizer_mode is True:
                 _, _, s1, _ = out.shape
                 _, _, _, s2 = network._camap_fr.shape
-                camap = F.interpolate(network._camap_fr, size=(s1, s2), mode=mode)
-                out_o = camap @ value
-                out = (1-camap_w)*out + camap_w*out_o
+                if is_sd3:
+                    camap = F.interpolate(network._camap_fr, size=(s1-154, s2), mode=mode)
+                    out_o = attnmap @ value[:,:,-154:,:] * 154/4096
+                    out[:,:,:-154,:] += out_o*camap_w
+                else:
+                    camap = F.interpolate(network._camap_fr, size=(s1, s2), mode=mode)
+                    out_o = camap @ value
+                    out = (1-camap_w)*out + camap_w*out_o
 
             return out
 
@@ -101,18 +116,29 @@ def camap_wrapper(pipeline, camap_w=1.0, mode="bilinear", name="camap_wrapper"):
     for layername, module in network.named_modules():
         if layername.endswith(".attn2"): # sd21 or sdxl
             wrap(module, name, 'forward', partial(attnlayer_forward, layername=layername))
+        if layername.endswith(".attn"): # sd3
+            wrap(module, name, 'forward', partial(attnlayer_forward, layername=layername))
 
     # ===== ends =====
 
     return pipeline, name
 
 def camap_unwrapper(pipeline, name="camap_wrapper"):
-    network = pipeline.unet
+    if isinstance(pipeline, StableDiffusion3Pipeline):
+        network = pipeline.transformer
+        is_sd3 = True
+    elif isinstance(pipeline, (StableDiffusionPipeline, StableDiffusionXLPipeline)):
+        network = pipeline.unet
+        is_sd3 = False
+    else:
+        raise Exception(f"unsupported pipeline {type(pipeline)}")
 
     unwrap(network, name, "forward")
 
     for layername, module in network.named_modules():
         if layername.endswith(".attn2"):
+            unwrap(module, name, 'forward')
+        if layername.endswith(".attn"):
             unwrap(module, name, 'forward')
 
     return pipeline

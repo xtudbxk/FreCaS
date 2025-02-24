@@ -1,7 +1,7 @@
 import torch
 from loguru import logger
 
-from diffusers import DDIMScheduler
+from diffusers import DDIMScheduler, StableDiffusion3Pipeline
 
 from utils.sd_utils import vae_encode, vae_decode
 from utils.wrapper_utils import wrap, unwrap, obtain_origin
@@ -15,6 +15,11 @@ def get_next_starttimestep(scheduler, ot, os=1024, ts=2048, factor=2):
     target_alphas = s*last_alphas/(1+(s-1)*last_alphas)
     timestep = total_len - torch.searchsorted(torch.flip(alphas_cumprod, dims=(0,)), target_alphas, right=True)
     return int(timestep)
+
+def get_next_starttimestep_rf(scheduler, ot, os=1024, ts=2048):
+    toshift = (ts / os)**0.5
+    newt = 1000*toshift * ot / (1000 + (toshift-1)*ot )
+    return int(newt)
 
 def scheduler_wrapper(pipeline, schedulers, name="_scheduler_wrapper", gamma=2.0):
     pipeline.scheduler._msp_schedulers = schedulers
@@ -34,7 +39,7 @@ def scheduler_wrapper(pipeline, schedulers, name="_scheduler_wrapper", gamma=2.0
     wrap(pipeline.scheduler, name, 'is_first_timestep', is_first_timestep)
     wrap(pipeline.scheduler, name, 'is_last_timestep', is_last_timestep)
 
-    # ---- a function to init all the timestes at the begining ----
+    # ---- a function to init all the timesteps at the begining ----
     def set_timesteps(self, num_inference_steps, **kwargs):
         if isinstance(self, DDIMScheduler):
             self.config.timestep_spacing = "linspace"
@@ -54,6 +59,7 @@ def scheduler_wrapper(pipeline, schedulers, name="_scheduler_wrapper", gamma=2.0
                 timesteps = torch.cat([timesteps,self.timesteps[indexs]])
             # for locating the previous timestep in sd2/sdxl
             sche["num_inference_steps"] = int(1000/(st-et)*(ts-1))
+            # for locating the delta t in sd3
             sche["indexs"] = torch.cat([indexs, indexs[-2:-1]+1])
 
             sche["timesteps"] = self.timesteps[indexs]
@@ -67,7 +73,10 @@ def scheduler_wrapper(pipeline, schedulers, name="_scheduler_wrapper", gamma=2.0
                 else:
                     os, ts = osw, tsw
 
-                st = get_next_starttimestep(self, et, os, ts, gamma)
+                if isinstance(pipeline, StableDiffusion3Pipeline):
+                    st = get_next_starttimestep_rf(self, et, os, ts)
+                else:
+                    st = get_next_starttimestep(self, et, os, ts, gamma)
             # --- ends ---
 
         self.timesteps = timesteps
@@ -101,6 +110,8 @@ def scheduler_wrapper(pipeline, schedulers, name="_scheduler_wrapper", gamma=2.0
             self._indexs = schedulers[self._msp_i]["indexs"]
             self._indexs_i = 0
 
+            factor = schedulers[self._msp_i]['size'][0] / schedulers[self._msp_i-1]['size'][0]
+
             # denoise
             latents = out.pred_original_sample
 
@@ -109,7 +120,7 @@ def scheduler_wrapper(pipeline, schedulers, name="_scheduler_wrapper", gamma=2.0
             images = torch.clip(images, -1, 1)
 
             # interpolate
-            images = torch.nn.functional.interpolate(images, size=schedulers[self._msp_i]["size"], mode="nearest")
+            images = torch.nn.functional.interpolate(images, scale_factor=factor, mode="nearest")
 
             # encode
             latents = vae_encode(pipeline, images)

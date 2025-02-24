@@ -59,14 +59,8 @@ from webdataset.tariterators import (
 
 import diffusers
 from diffusers import (
-    AutoencoderKL,
-    DDPMScheduler,
     DDIMScheduler,
-    LCMScheduler,
     StableDiffusionPipeline,
-    DiTPipeline,
-    UNet2DConditionModel,
-    DPMSolverMultistepScheduler,
     StableDiffusionXLPipeline,
     StableDiffusion3Pipeline
 )
@@ -86,6 +80,7 @@ from utils.sd_utils import vae_encode, vae_decode, sdxl_vae_wrapper, sdxl_vae_un
 from utils.facfg_wrapper import facfg_wrapper, facfg_unwrapper
 from utils.scheduler_wrapper import scheduler_wrapper, scheduler_unwrapper
 from utils.camap_wrapper import camap_wrapper, camap_unwrapper
+from utils.scheduling_flow_match_euler_discrete_modified import FlowMatchEulerDiscreteModifiedScheduler
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Simple example of a training script.")
@@ -101,7 +96,7 @@ def parse_args():
     parser.add_argument("--msp_gamma", type=float, default=2.0)
     parser.add_argument("--gs", type=float, default="5.0")
     parser.add_argument("--tsize", type=str, default="[[1024,1024],[2048,2048]]")
-    parser.add_argument("--name", type=str, default="sdxl")
+    parser.add_argument("--name", type=str, default="sdxl", choices=["sd21", "sdxl", "sd3"])
     parser.add_argument("--vae_tiling", action="store_true")
     # --- ends ---
 
@@ -137,13 +132,22 @@ def main(args):
     # ===== FreCaS =====
     # --- the paths of different pipelines ---
     pipeline_paths = {
+        "sd21": "/home/notebook/data/group/LowLevelLLM/models/diffusion_models/stable-diffusion-2-1-base",
         "sdxl": "/home/notebook/data/group/LowLevelLLM/models/diffusion_models/stable-diffusion-xl-base-1.0",
+        "sd3": "/home/notebook/data/group/LowLevelLLM/models/diffusion_models/stable-diffusion-3-medium-diffusers",
     }
 
     # --- load the pipeline ---
-    pipeline = StableDiffusionXLPipeline.from_pretrained(pipeline_paths[args.name], torch_dtype=weight_dtype, safety_checker=None)
-    pipeline.watermark = None
-    pipeline.scheduler = DDIMScheduler.from_config(pipeline.scheduler.config, torch_dtype=weight_dtype, device="cuda")
+    if args.name == "sd21":
+        pipeline = StableDiffusionPipeline.from_pretrained(pipeline_paths[args.name], torch_dtype=weight_dtype, safety_checker=None)
+        pipeline.scheduler = DDIMScheduler.from_config(pipeline.scheduler.config, torch_dtype=weight_dtype, device="cuda")
+    if args.name == "sdxl":
+        pipeline = StableDiffusionXLPipeline.from_pretrained(pipeline_paths[args.name], torch_dtype=weight_dtype, safety_checker=None)
+        pipeline.watermark = None
+        pipeline.scheduler = DDIMScheduler.from_config(pipeline.scheduler.config, torch_dtype=weight_dtype, device="cuda")
+    if args.name == "sd3":
+        pipeline = StableDiffusion3Pipeline.from_pretrained(pipeline_paths[args.name], text_encoder_3=None, tokenizer_3=None, torch_dtype=weight_dtype)
+        pipeline.scheduler = FlowMatchEulerDiscreteModifiedScheduler.from_config(pipeline.scheduler.config, torch_dtype=weight_dtype)
 
     # --- move the pipeline to cuda ---
     pipeline.to("cuda")
@@ -157,9 +161,14 @@ def main(args):
     pipeline._weight_dtype = weight_dtype
     pipeline._device = pipeline.vae.device
 
-    # --- convert the vae to tf32 since its vae only works under tf32 precision ---
-    sdxl_vae_wrapper(pipeline)
+    if isinstance(pipeline, StableDiffusionXLPipeline):
+        # --- convert the vae to tf32 since the vae of sdxl only works under tf32 precision ---
+        sdxl_vae_wrapper(pipeline)
+
+    if args.vae_tiling:
+        pipeline.enable_vae_tiling()
     logger.info(f"create pipeline: {args.name}")
+
 
     # ===== ends =====
 

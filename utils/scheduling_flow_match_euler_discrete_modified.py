@@ -15,6 +15,7 @@ class FlowMatchEulerDiscreteModifiedScheduler(FlowMatchEulerDiscreteScheduler):
     def add_noise(self, origin_samples, timesteps, noise):
         return self.scale_noise(origin_samples, timesteps, noise=noise)
 
+    # we modify the step function to return the predicted x_start
     def step(self, model_output, timestep, sample, 
              s_churn=0.0, s_tmin=0.0, s_tmax=float("inf"),
              s_noise=1.0, generator=None, return_dict=True,
